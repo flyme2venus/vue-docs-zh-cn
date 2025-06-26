@@ -1,3 +1,5 @@
+# .github/workflows/release.yml
+
 name: Build Windows Desktop App
 
 # 触发器：当有代码推送到 main 分支时，或手动触发时运行
@@ -11,7 +13,7 @@ jobs:
     # 策略：不因其他 job 失败而取消，超时设置为 60 分钟
     strategy:
       fail-fast: false
-    
+      
     # 运行环境：必须使用 Windows Runner
     runs-on: windows-latest
 
@@ -24,7 +26,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       # 3. 设置 pnpm
       - name: Setup pnpm
@@ -32,33 +34,34 @@ jobs:
         with:
           version: 8 # 或者你使用的 pnpm 版本
 
-      # 4. 安装 Rust 工具链
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-      
-      # 5. 缓存 Rust 依赖 (可选，但能极大提升后续构建速度)
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
+      # 4. 【推荐的修改】使用官方 Action 安装 Tauri 依赖和 CLI
+      # 这个 Action 会处理 Rust 工具链、WebView2、NSIS (用于打包) 以及 Tauri CLI 的安装
+      - name: Install Tauri dependencies and CLI
+        uses: tauri-apps/tauri-action@v0
         with:
-          workspaces: './src-tauri -> target'
+          # 你可以在这里指定一个固定的 tauri-cli 版本
+          cliVersion: 1
 
-      # 6. 安装前端依赖
+      # 5. 安装前端依赖
+      # pnpm install 会读取 package.json 并安装所有项目所需的前端库
       - name: Install frontend dependencies
         run: pnpm install
 
-      # 7. 构建 Tauri 应用
-      # --verbose 可以在失败时提供更详细的日志
+      # 6. 构建 Tauri 应用
+      # 使用 `pnpm exec` 可以确保即使 tauri-cli 安装在本地 node_modules 中也能被正确执行
       - name: Build Tauri application
-        run: pnpm tauri build --verbose
+        run: pnpm exec tauri build --verbose
         env:
-          # 如果需要，可以在这里设置环境变量
+          # GITHUB_TOKEN 是自动可用的，用于和 GitHub API 交互
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 8. 上传构建产物
-      # 将打包好的 .msi 文件作为 "Artifact" 上传，方便下载
+      # 7. 上传构建产物
+      # 将打包好的 .msi 安装文件作为 "Artifact" 上传，方便下载
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
           name: VueDocs-Windows-Installer
           # 路径通配符可以匹配版本号不确定的文件名
+          # 请确保这个路径和你的 tauri.conf.json 中的输出路径一致
           path: src-tauri/target/release/bundle/msi/*.msi
+
