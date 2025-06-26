@@ -35,34 +35,48 @@ jobs:
           version: 8 # 或者你使用的 pnpm 版本
 
       # 4. 安装前端依赖
-      # pnpm install 会读取 package.json 并安装所有项目所需的前端库
       - name: Install frontend dependencies
         run: pnpm install
 
-      # 5. 【新增】构建前端应用
-      # 这一步会编译你的 Vue/React/etc. 代码，并将产物输出到 dist 目录
-      # 这是 Tauri 打包前必需的一步
-      - name: Build frontend
-        run: pnpm build # 假设你的构建脚本是 "build"
+      # 5. 【恢复】显式构建前端应用
+      # 这一步会编译你的 VitePress 代码，并将产物输出到 .vitepress/dist 目录
+      - name: Build frontend application
+        run: pnpm build
 
-      # 6. 【修正】使用官方 Action 构建 Tauri 应用
-      # 这个 Action 会处理 Rust 工具链、WebView2、NSIS，然后运行 `tauri build`
+      # 6. 【新增】调试步骤：检查构建产物是否存在
+      # 这一步会验证 ./.vitepress/dist 目录是否已成功创建，并列出其内容。
+      # 这有助于确认问题是否出在 tauri-action 的路径解析上。
+      - name: Verify build output
+        run: |
+          echo "--- Checking for frontend build output at ./.vitepress/dist ---"
+          $path = "./.vitepress/dist"
+          if (Test-Path $path) {
+            echo "✅ Directory found: $path"
+            echo "--- Directory contents: ---"
+            # 列出目录内容以供调试
+            Get-ChildItem -Path $path -Recurse
+            echo "---------------------------"
+          } else {
+            echo "❌ ERROR: Directory NOT found: $path"
+            echo "Build failed because the frontend output is missing."
+            exit 1
+          }
+        shell: pwsh
+
+      # 7. 使用官方 Action 构建 Tauri 应用
       - name: Build Tauri application
         uses: tauri-apps/tauri-action@v0
         env:
           # GITHUB_TOKEN 是自动可用的，用于和 GitHub API 交互
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          # `tauri-action` 会自动运行 `tauri build`，无需额外参数
+          # 添加 --verbose 参数可以在日志中看到更详细的构建信息，方便未来调试
           args: --verbose
 
-      # 7. 上传构建产物
-      # 将打包好的 .msi 安装文件作为 "Artifact" 上传，方便下载
+      # 8. 上传构建产物
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
           name: VueDocs-Windows-Installer
           # 路径通配符可以匹配版本号不确定的文件名
-          # 请确保这个路径和你的 tauri.conf.json 中的输出路径一致
           path: src-tauri/target/release/bundle/msi/*.msi
-
