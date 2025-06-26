@@ -1,0 +1,64 @@
+name: Build Windows Desktop App
+
+# 触发器：当有代码推送到 main 分支时，或手动触发时运行
+on:
+  push:
+    branches: [ "main", "master" ] # 根据你的主分支名修改
+  workflow_dispatch: # 允许手动从 Actions 页面触发
+
+jobs:
+  build-tauri:
+    # 策略：不因其他 job 失败而取消，超时设置为 60 分钟
+    strategy:
+      fail-fast: false
+    
+    # 运行环境：必须使用 Windows Runner
+    runs-on: windows-latest
+
+    steps:
+      # 1. 检出代码
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. 安装 Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # 3. 设置 pnpm
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8 # 或者你使用的 pnpm 版本
+
+      # 4. 安装 Rust 工具链
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain-action@stable
+      
+      # 5. 缓存 Rust 依赖 (可选，但能极大提升后续构建速度)
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      # 6. 安装前端依赖
+      - name: Install frontend dependencies
+        run: pnpm install
+
+      # 7. 构建 Tauri 应用
+      # --verbose 可以在失败时提供更详细的日志
+      - name: Build Tauri application
+        run: pnpm tauri build --verbose
+        env:
+          # 如果需要，可以在这里设置环境变量
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 8. 上传构建产物
+      # 将打包好的 .msi 文件作为 "Artifact" 上传，方便下载
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: VueDocs-Windows-Installer
+          # 路径通配符可以匹配版本号不确定的文件名
+          path: src-tauri/target/release/bundle/msi/*.msi
