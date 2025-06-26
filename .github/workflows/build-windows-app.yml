@@ -34,7 +34,7 @@ jobs:
 
       # 4. 安装 Rust 工具链
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain-action@1.42.0
+        uses: dtolnay/rust-toolchain@stable
       
       # 5. 缓存 Rust 依赖 (可选，但能极大提升后续构建速度)
       - name: Cache Rust dependencies
