@@ -38,29 +38,24 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install
 
-      # 5. 【恢复】显式构建前端应用
+      # 5. 构建前端应用
       # 这一步会编译你的 VitePress 代码，并将产物输出到 .vitepress/dist 目录
       - name: Build frontend application
         run: pnpm build
 
-      # 6. 【新增】调试步骤：检查构建产物是否存在
-      # 这一步会验证 ./.vitepress/dist 目录是否已成功创建，并列出其内容。
-      # 这有助于确认问题是否出在 tauri-action 的路径解析上。
-      - name: Verify build output
+      # 6. 【新增】复制构建产物到标准路径
+      # 这是为了解决 tauri-action 无法处理 '../.vitepress/dist' 路径的问题。
+      # 我们将产物复制到一个标准的 'dist' 目录中，供 Tauri 打包使用。
+      - name: Copy build output to a standard directory
         run: |
-          echo "--- Checking for frontend build output at ./.vitepress/dist ---"
-          $path = "./.vitepress/dist"
-          if (Test-Path $path) {
-            echo "✅ Directory found: $path"
-            echo "--- Directory contents: ---"
-            # 列出目录内容以供调试
-            Get-ChildItem -Path $path -Recurse
-            echo "---------------------------"
-          } else {
-            echo "❌ ERROR: Directory NOT found: $path"
-            echo "Build failed because the frontend output is missing."
-            exit 1
-          }
+          echo "--- Copying from ./.vitepress/dist to ./dist ---"
+          # 创建目标目录
+          New-Item -ItemType Directory -Force -Path ./dist
+          # 复制内容
+          Copy-Item -Path ./.vitepress/dist/* -Destination ./dist -Recurse -Force
+          echo "--- Verifying copied files in ./dist ---"
+          Get-ChildItem -Path ./dist -Recurse
+          echo "-----------------------------------------"
         shell: pwsh
 
       # 7. 使用官方 Action 构建 Tauri 应用
@@ -70,7 +65,8 @@ jobs:
           # GITHUB_TOKEN 是自动可用的，用于和 GitHub API 交互
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          # 添加 --verbose 参数可以在日志中看到更详细的构建信息，方便未来调试
+          # `tauri-action` 将会使用 tauri.conf.json 中的配置
+          # 请确保已将 tauri.conf.json 中的 `distDir` 修改为 "../dist"
           args: --verbose
 
       # 8. 上传构建产物
