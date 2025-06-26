@@ -43,19 +43,19 @@ jobs:
       - name: Build frontend application
         run: pnpm build
 
-      # 6. 【新增】复制构建产物到标准路径
-      # 这是为了解决 tauri-action 无法处理 '../.vitepress/dist' 路径的问题。
-      # 我们将产物复制到一个标准的 'dist' 目录中，供 Tauri 打包使用。
-      - name: Copy build output to a standard directory
+      # 6. 【最终修正】复制构建产物到 Tauri 内部
+      # 这是为了彻底解决 tauri-action 在 Windows CI 中的路径解析问题。
+      # 我们将前端产物复制到 src-tauri/dist 目录中。
+      - name: Copy build output to inside src-tauri
         run: |
-          echo "--- Copying from ./.vitepress/dist to ./dist ---"
+          echo "--- Copying from ./.vitepress/dist to ./src-tauri/dist ---"
           # 创建目标目录
-          New-Item -ItemType Directory -Force -Path ./dist
+          New-Item -ItemType Directory -Force -Path ./src-tauri/dist
           # 复制内容
-          Copy-Item -Path ./.vitepress/dist/* -Destination ./dist -Recurse -Force
-          echo "--- Verifying copied files in ./dist ---"
-          Get-ChildItem -Path ./dist -Recurse
-          echo "-----------------------------------------"
+          Copy-Item -Path ./.vitepress/dist/* -Destination ./src-tauri/dist -Recurse -Force
+          echo "--- Verifying copied files in ./src-tauri/dist ---"
+          Get-ChildItem -Path ./src-tauri/dist -Recurse
+          echo "----------------------------------------------------"
         shell: pwsh
 
       # 7. 使用官方 Action 构建 Tauri 应用
@@ -66,7 +66,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           # `tauri-action` 将会使用 tauri.conf.json 中的配置
-          # 请确保已将 tauri.conf.json 中的 `distDir` 修改为 "../dist"
+          # 请确保已将 tauri.conf.json 中的 `distDir` 修改为 "dist"
           args: --verbose
 
       # 8. 上传构建产物
