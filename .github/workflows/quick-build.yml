@@ -128,7 +128,7 @@ jobs:
         Copy-Item $sourceExe "$portableDir/Vue文档.exe"
         
         # 创建说明文件
-        @'
+        $readmeContent = @"
 Vue.js 中文文档桌面应用 - 便携版
 
 使用说明：
@@ -142,7 +142,8 @@ Vue.js 中文文档桌面应用 - 便携版
 - 系统要求: Windows 10 1903+ (64位)
 
 项目地址: https://github.com/vuejs-translations/docs-zh-cn
-'@ | Out-File -FilePath "$portableDir/README.txt" -Encoding UTF8
+"@
+        $readmeContent | Out-File -FilePath "$portableDir/README.txt" -Encoding UTF8
         
         # 压缩便携版
         Compress-Archive -Path "$portableDir/*" -DestinationPath "vue-docs-portable-${{ github.sha }}.zip"
