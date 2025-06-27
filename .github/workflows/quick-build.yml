@@ -9,6 +9,7 @@ on:
       - 'src-tauri/**'
       - 'package.json'
       - 'pnpm-lock.yaml'
+      - '.github/workflows/quick-build.yml'
   pull_request:
     branches: [ main, master ]
     paths:
@@ -17,6 +18,7 @@ on:
       - 'src-tauri/**'
       - 'package.json'
       - 'pnpm-lock.yaml'
+      - '.github/workflows/quick-build.yml'
   workflow_dispatch:
 
 env:
