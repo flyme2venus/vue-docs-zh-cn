@@ -2,7 +2,6 @@ fn main() {
     // 配置 Windows 资源文件
     #[cfg(target_os = "windows")]
     {
-        use std::env;
         use std::path::Path;
         
         let mut res = winres::WindowsResource::new();
