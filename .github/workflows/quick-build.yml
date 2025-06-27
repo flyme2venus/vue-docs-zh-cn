@@ -74,81 +74,32 @@ jobs:
     - name: Verify frontend build
       run: |
         if (!(Test-Path ".vitepress/dist")) {
-          Write-Error "Frontend build failed - dist directory not found"
+          Write-Error "Frontend build failed"
           exit 1
         }
-        $files = Get-ChildItem ".vitepress/dist" -Recurse | Measure-Object
-        Write-Host "Frontend build successful - $($files.Count) files generated"
 
     - name: Build Tauri executable (no bundle)
       run: |
-        echo "Building Windows executable with Vue icon..."
         pnpm tauri build --target x86_64-pc-windows-msvc --no-bundle
-        
-        if (Test-Path "src-tauri/target/x86_64-pc-windows-msvc/release/vue-docs-zh-cn.exe") {
-          Write-Host "✓ Executable build successful"
-          $size = (Get-Item "src-tauri/target/x86_64-pc-windows-msvc/release/vue-docs-zh-cn.exe").Length
-          Write-Host "Executable size: $([math]::Round($size/1MB, 2)) MB"
-          
-          # 验证图标是否嵌入（通过文件大小粗略判断）
-          if ($size -gt 10MB) {
-            Write-Host "✓ Icon likely embedded (larger file size)"
-          } else {
-            Write-Host "⚠ Warning: File size seems small, icon may not be embedded"
-          }
-        } else {
+        if (!(Test-Path "src-tauri/target/x86_64-pc-windows-msvc/release/vue-docs-zh-cn.exe")) {
           Write-Error "Executable build failed"
           exit 1
         }
 
     - name: Build Tauri with NSIS installer
       run: |
-        echo "Building NSIS installer with Vue icon..."
         pnpm tauri build --target x86_64-pc-windows-msvc --bundles nsis
-        
-        $nsisPath = "src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis"
-        if (Test-Path $nsisPath) {
-          $installer = Get-ChildItem "$nsisPath/*.exe" | Select-Object -First 1
-          if ($installer) {
-            Write-Host "✓ NSIS installer created: $($installer.Name)"
-            Write-Host "Installer size: $([math]::Round($installer.Length/1MB, 2)) MB"
-          }
-        } else {
-          Write-Host "⚠ NSIS installer not created (continuing with executable only)"
-        }
       continue-on-error: true
 
     - name: Create portable package
       run: |
         $sourceExe = "src-tauri/target/x86_64-pc-windows-msvc/release/vue-docs-zh-cn.exe"
         $portableDir = "vue-docs-portable"
-        
-        # 创建便携版目录
         New-Item -ItemType Directory -Path $portableDir -Force
         Copy-Item $sourceExe "$portableDir/Vue文档.exe"
-        
-        # 创建说明文件
-        $readmeContent = @"
-Vue.js 中文文档桌面应用 - 便携版
-
-使用说明：
-1. 双击 "Vue文档.exe" 启动应用
-2. 首次启动可能需要几秒钟加载
-3. 支持离线访问完整的Vue.js中文文档
-
-版本信息：
-- 构建时间: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
-- 构建版本: ${{ github.sha }}
-- 系统要求: Windows 10 1903+ (64位)
-
-项目地址: https://github.com/vuejs-translations/docs-zh-cn
-"@
-        $readmeContent | Out-File -FilePath "$portableDir/README.txt" -Encoding UTF8
-        
-        # 压缩便携版
+        "Vue.js Documentation Desktop App" | Out-File -FilePath "$portableDir/README.txt" -Encoding UTF8
         Compress-Archive -Path "$portableDir/*" -DestinationPath "vue-docs-portable-${{ github.sha }}.zip"
-        
-        Write-Host "✓ Portable package created"
+        Write-Host "Portable package created"
 
     - name: Upload executable and installer
       uses: actions/upload-artifact@v4
@@ -168,16 +119,4 @@ Vue.js 中文文档桌面应用 - 便携版
 
     - name: Build summary
       run: |
-        echo "## 🎉 构建完成" >> $env:GITHUB_STEP_SUMMARY
-        echo "" >> $env:GITHUB_STEP_SUMMARY
-        echo "### 📦 构建产物" >> $env:GITHUB_STEP_SUMMARY
-        echo "- **可执行文件**: vue-docs-zh-cn.exe (含Vue图标)" >> $env:GITHUB_STEP_SUMMARY
-        echo "- **NSIS安装程序**: Vue Docs_x.x.x_x64-setup.exe (如果构建成功)" >> $env:GITHUB_STEP_SUMMARY
-        echo "- **便携版**: vue-docs-portable-${{ github.sha }}.zip" >> $env:GITHUB_STEP_SUMMARY
-        echo "" >> $env:GITHUB_STEP_SUMMARY
-        echo "### 📥 下载方式" >> $env:GITHUB_STEP_SUMMARY
-        echo "在 Actions 页面的 Artifacts 部分下载构建文件" >> $env:GITHUB_STEP_SUMMARY
-        echo "" >> $env:GITHUB_STEP_SUMMARY
-        echo "### ✨ 更新内容" >> $env:GITHUB_STEP_SUMMARY
-        echo "- 可执行文件现在包含Vue.js官方图标" >> $env:GITHUB_STEP_SUMMARY
-        echo "- 仅在Windows平台构建，提高效率" >> $env:GITHUB_STEP_SUMMARY
+        echo "Build completed" >> $env:GITHUB_STEP_SUMMARY
