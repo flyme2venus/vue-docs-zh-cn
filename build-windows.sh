@@ -1,8 +1,10 @@
 #!/bin/bash
 
 # Vue Docs Windows 桌面应用构建脚本
+# 使用 Vue.js 官方图标
 
-echo "开始构建 Vue Docs Windows 桌面应用..."
+echo "🚀 开始构建 Vue Docs Windows 桌面应用..."
+echo "📦 应用图标: Vue.js 官方绿色Logo"
 
 # 解析命令行参数
 FAST_BUILD=false
