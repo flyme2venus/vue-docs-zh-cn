@@ -53,11 +53,17 @@
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",
       "timestampUrl": "",
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
+      "allowDowngrades": false,
+      "wix": null,
       "nsis": {
         "displayLanguageSelector": true,
         "languages": ["SimpChinese", "English"],
         "installerIcon": "icons/icon.ico",
-        "installMode": "currentUser"
+        "installMode": "currentUser",
+        "template": null
       }
     }
   }
