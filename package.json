@@ -13,7 +13,15 @@
     "clean": "rm -rf .vitepress/dist",
     "sync": "node scripts/sync.js",
     "preinstall": "npx only-allow pnpm",
-    "type": "vue-tsc --noEmit"
+    "type": "vue-tsc --noEmit",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "tauri:build:win": "tauri build --target x86_64-pc-windows-msvc",
+    "tauri:build:mac": "tauri build --target aarch64-apple-darwin",
+    "tauri:build:linux": "tauri build --target x86_64-unknown-linux-gnu",
+    "tauri:info": "tauri info",
+    "tauri:icon": "tauri icon"
   },
   "dependencies": {
     "@vue/repl": "^4.4.2",
@@ -24,6 +32,8 @@
     "vue": "^3.5.12"
   },
   "devDependencies": {
+    "@tauri-apps/api": "^2.6.0",
+    "@tauri-apps/cli": "^2.6.1",
     "@types/body-scroll-lock": "^3.1.2",
     "@types/markdown-it": "^14.1.2",
     "@types/node": "^22.7.5",

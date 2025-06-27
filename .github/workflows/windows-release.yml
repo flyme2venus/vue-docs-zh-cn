@@ -1,0 +1,158 @@
+name: Windows Release Build
+
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag (e.g., v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 9
+
+    - name: Get pnpm store directory
+      id: pnpm-cache
+      shell: bash
+      run: |
+        echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+    - name: Setup pnpm cache
+      uses: actions/cache@v3
+      with:
+        path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-store-
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+        targets: x86_64-pc-windows-msvc
+
+    - name: Rust cache
+      uses: swatinem/rust-cache@v2
+      with:
+        workspaces: './src-tauri -> target'
+
+    - name: Install frontend dependencies
+      run: pnpm install --frozen-lockfile
+
+    - name: Lint frontend code
+      run: pnpm type
+      continue-on-error: true
+
+    - name: Build frontend
+      run: pnpm build
+
+    - name: Verify frontend build
+      run: |
+        if (!(Test-Path ".vitepress/dist")) {
+          Write-Error "Frontend build failed - dist directory not found"
+          exit 1
+        }
+        Write-Host "Frontend build successful"
+
+    - name: Build Tauri app
+      uses: tauri-apps/tauri-action@v0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # 如果需要代码签名，添加以下环境变量
+        # TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        # TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      with:
+        tagName: ${{ github.event.inputs.release_tag || github.ref_name }}
+        releaseName: 'Vue Docs Desktop ${{ github.event.inputs.release_tag || github.ref_name }}'
+        releaseBody: |
+          # Vue.js 中文文档桌面应用 ${{ github.event.inputs.release_tag || github.ref_name }}
+          
+          ## 📦 Windows 安装包
+          
+          ### 安装说明
+          1. 下载 `.msi` 安装程序
+          2. 运行安装程序，按照提示完成安装
+          3. 在开始菜单中找到 "Vue Docs" 并启动
+          
+          ### 应用特性
+          - 🖥️ 原生 Windows 桌面体验
+          - 📖 完整的 Vue.js 中文文档离线访问
+          - 🔍 强大的内置搜索功能
+          - 📱 响应式设计，适配不同屏幕尺寸
+          - ⚡ 快速启动和流畅导航
+          - 🌙 支持深色/浅色主题切换
+          - 🔄 自动更新检查（未来版本）
+          
+          ### 系统要求
+          - Windows 10 1903 或更高版本
+          - 64位操作系统
+          - 最小 4GB 内存推荐
+          
+          ### 文件说明
+          - `Vue Docs_x.x.x_x64.msi` - Windows 安装程序（推荐）
+          - `vue-docs-zh-cn.exe` - 便携版可执行文件
+          
+          如有问题，请在 GitHub Issues 中反馈。
+        releaseDraft: false
+        prerelease: false
+        args: --target x86_64-pc-windows-msvc
+
+    - name: Compress portable executable
+      run: |
+        Compress-Archive -Path "src-tauri/target/x86_64-pc-windows-msvc/release/vue-docs-zh-cn.exe" -DestinationPath "vue-docs-portable-windows.zip"
+
+    - name: Upload Windows installer
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-installer
+        path: |
+          src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
+        retention-days: 90
+
+    - name: Upload portable executable
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-portable
+        path: vue-docs-portable-windows.zip
+        retention-days: 90
+
+    - name: Calculate checksums
+      run: |
+        $installerPath = Get-ChildItem "src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi" | Select-Object -First 1
+        $portablePath = "vue-docs-portable-windows.zip"
+        
+        $installerHash = Get-FileHash $installerPath.FullName -Algorithm SHA256
+        $portableHash = Get-FileHash $portablePath -Algorithm SHA256
+        
+        Write-Output "## 文件校验和 (SHA256)" | Out-File -FilePath checksums.txt
+        Write-Output "``````" | Out-File -FilePath checksums.txt -Append
+        Write-Output "$($installerHash.Hash)  $($installerPath.Name)" | Out-File -FilePath checksums.txt -Append
+        Write-Output "$($portableHash.Hash)  $portablePath" | Out-File -FilePath checksums.txt -Append
+        Write-Output "``````" | Out-File -FilePath checksums.txt -Append
+
+    - name: Upload checksums
+      uses: actions/upload-artifact@v4
+      with:
+        name: checksums
+        path: checksums.txt
+        retention-days: 90

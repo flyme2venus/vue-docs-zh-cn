@@ -1,0 +1,141 @@
+name: Development Build
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    paths:
+      - 'src/**'
+      - '.vitepress/**'
+      - 'src-tauri/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'src/**'
+      - '.vitepress/**'
+      - 'src-tauri/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test-build:
+    strategy:
+      matrix:
+        platform: [ubuntu-22.04, windows-latest, macos-latest]
+    
+    runs-on: ${{ matrix.platform }}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install dependencies (ubuntu only)
+      if: matrix.platform == 'ubuntu-22.04'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 9
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Rust cache
+      uses: swatinem/rust-cache@v2
+      with:
+        workspaces: './src-tauri -> target'
+
+    - name: Install dependencies
+      run: pnpm install
+
+    - name: Type check
+      run: pnpm type
+      continue-on-error: true
+
+    - name: Lint markdown
+      if: matrix.platform == 'ubuntu-22.04'
+      run: pnpm lint
+      continue-on-error: true
+
+    - name: Build frontend
+      run: pnpm build
+
+    - name: Verify build output
+      run: |
+        if [ "${{ matrix.platform }}" = "windows-latest" ]; then
+          if [ ! -d ".vitepress/dist" ]; then
+            echo "Build failed - dist directory not found"
+            exit 1
+          fi
+        else
+          test -d .vitepress/dist || (echo "Build failed - dist directory not found" && exit 1)
+        fi
+        echo "Build verification passed"
+      shell: bash
+
+    - name: Test Tauri build (Ubuntu/macOS)
+      if: matrix.platform != 'windows-latest'
+      run: pnpm tauri build --no-bundle
+      
+    - name: Test Tauri build (Windows)
+      if: matrix.platform == 'windows-latest'
+      run: pnpm tauri build --no-bundle --target x86_64-pc-windows-msvc
+
+  build-sample:
+    runs-on: windows-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test-build
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 9
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: x86_64-pc-windows-msvc
+
+    - name: Rust cache
+      uses: swatinem/rust-cache@v2
+      with:
+        workspaces: './src-tauri -> target'
+
+    - name: Install dependencies
+      run: pnpm install
+
+    - name: Build frontend
+      run: pnpm build
+
+    - name: Build Windows app (development)
+      run: pnpm tauri build --target x86_64-pc-windows-msvc
+
+    - name: Upload development build
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-dev-build-${{ github.sha }}
+        path: |
+          src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
+          src-tauri/target/x86_64-pc-windows-msvc/release/*.exe
+        retention-days: 7

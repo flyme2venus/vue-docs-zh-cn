@@ -49,3 +49,48 @@ corepack enable
 ## 版权声明
 
 <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/"><img alt="知识共享许可协议" style="border-width:0" src="https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png" /></a><br />本作品采用<a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/">知识共享署名-非商业性使用-相同方式共享 4.0 国际许可协议  (CC BY-NC-SA 4.0) </a>进行许可。
+
+# Vue.js 中文文档
+
+[![Development Build](https://github.com/vuejs-translations/docs-zh-cn/actions/workflows/dev-build.yml/badge.svg)](https://github.com/vuejs-translations/docs-zh-cn/actions/workflows/dev-build.yml)
+[![Windows Release](https://github.com/vuejs-translations/docs-zh-cn/actions/workflows/windows-release.yml/badge.svg)](https://github.com/vuejs-translations/docs-zh-cn/actions/workflows/windows-release.yml)
+[![Multi-platform Build](https://github.com/vuejs-translations/docs-zh-cn/actions/workflows/build-multiplatform.yml/badge.svg)](https://github.com/vuejs-translations/docs-zh-cn/actions/workflows/build-multiplatform.yml)
+
+## 🖥️ 桌面应用
+
+本项目现已支持构建为跨平台桌面应用！使用 [Tauri](https://tauri.app/) 技术栈，提供原生的桌面体验。
+
+### 下载桌面应用
+
+- **Windows**: 访问 [Releases](https://github.com/vuejs-translations/docs-zh-cn/releases) 页面下载 `.msi` 安装程序
+- **macOS**: 下载 `.dmg` 文件
+- **Linux**: 下载 `.deb` 或 `.AppImage` 文件
+
+### 桌面应用特性
+
+- 🖥️ 原生桌面体验
+- 📖 完整的Vue.js中文文档离线访问
+- 🔍 强大的内置搜索功能
+- 📱 响应式设计，适配不同屏幕尺寸
+- ⚡ 快速启动和流畅导航
+- 🌙 支持深色/浅色主题切换
+
+### 本地构建
+
+```bash
+# 安装依赖
+pnpm install
+
+# 开发模式
+pnpm tauri:dev
+
+# 构建应用
+pnpm tauri:build
+
+# 构建 Windows 版本
+pnpm tauri:build:win
+```
+
+详细说明请参阅 [TAURI_SETUP.md](./TAURI_SETUP.md)。
+
+---
