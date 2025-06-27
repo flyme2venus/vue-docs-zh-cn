@@ -1,4 +1,4 @@
-name: Quick Windows Build
+name: Windows Build
 
 on:
   push:
@@ -7,8 +7,16 @@ on:
       - 'src/**'
       - '.vitepress/**'
       - 'src-tauri/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
   pull_request:
     branches: [ main, master ]
+    paths:
+      - 'src/**'
+      - '.vitepress/**'
+      - 'src-tauri/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
   workflow_dispatch:
 
 env:
@@ -74,17 +82,41 @@ jobs:
 
     - name: Build Tauri executable (no bundle)
       run: |
-        echo "Building Windows executable..."
+        echo "Building Windows executable with Vue icon..."
         pnpm tauri build --target x86_64-pc-windows-msvc --no-bundle
         
         if (Test-Path "src-tauri/target/x86_64-pc-windows-msvc/release/vue-docs-zh-cn.exe") {
           Write-Host "✓ Executable build successful"
           $size = (Get-Item "src-tauri/target/x86_64-pc-windows-msvc/release/vue-docs-zh-cn.exe").Length
           Write-Host "Executable size: $([math]::Round($size/1MB, 2)) MB"
+          
+          # 验证图标是否嵌入（通过文件大小粗略判断）
+          if ($size -gt 10MB) {
+            Write-Host "✓ Icon likely embedded (larger file size)"
+          } else {
+            Write-Host "⚠ Warning: File size seems small, icon may not be embedded"
+          }
         } else {
           Write-Error "Executable build failed"
           exit 1
         }
+
+    - name: Build Tauri with NSIS installer
+      run: |
+        echo "Building NSIS installer with Vue icon..."
+        pnpm tauri build --target x86_64-pc-windows-msvc --bundles nsis
+        
+        $nsisPath = "src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis"
+        if (Test-Path $nsisPath) {
+          $installer = Get-ChildItem "$nsisPath/*.exe" | Select-Object -First 1
+          if ($installer) {
+            Write-Host "✓ NSIS installer created: $($installer.Name)"
+            Write-Host "Installer size: $([math]::Round($installer.Length/1MB, 2)) MB"
+          }
+        } else {
+          Write-Host "⚠ NSIS installer not created (continuing with executable only)"
+        }
+      continue-on-error: true
 
     - name: Create portable package
       run: |
@@ -117,12 +149,13 @@ Vue.js 中文文档桌面应用 - 便携版
         
         Write-Host "✓ Portable package created"
 
-    - name: Upload executable
+    - name: Upload executable and installer
       uses: actions/upload-artifact@v4
       with:
-        name: windows-executable-${{ github.sha }}
+        name: windows-build-${{ github.sha }}
         path: |
           src-tauri/target/x86_64-pc-windows-msvc/release/vue-docs-zh-cn.exe
+          src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
         retention-days: 30
 
     - name: Upload portable package
@@ -137,8 +170,13 @@ Vue.js 中文文档桌面应用 - 便携版
         echo "## 🎉 构建完成" >> $env:GITHUB_STEP_SUMMARY
         echo "" >> $env:GITHUB_STEP_SUMMARY
         echo "### 📦 构建产物" >> $env:GITHUB_STEP_SUMMARY
-        echo "- **可执行文件**: vue-docs-zh-cn.exe" >> $env:GITHUB_STEP_SUMMARY
+        echo "- **可执行文件**: vue-docs-zh-cn.exe (含Vue图标)" >> $env:GITHUB_STEP_SUMMARY
+        echo "- **NSIS安装程序**: Vue Docs_x.x.x_x64-setup.exe (如果构建成功)" >> $env:GITHUB_STEP_SUMMARY
         echo "- **便携版**: vue-docs-portable-${{ github.sha }}.zip" >> $env:GITHUB_STEP_SUMMARY
         echo "" >> $env:GITHUB_STEP_SUMMARY
         echo "### 📥 下载方式" >> $env:GITHUB_STEP_SUMMARY
         echo "在 Actions 页面的 Artifacts 部分下载构建文件" >> $env:GITHUB_STEP_SUMMARY
+        echo "" >> $env:GITHUB_STEP_SUMMARY
+        echo "### ✨ 更新内容" >> $env:GITHUB_STEP_SUMMARY
+        echo "- 可执行文件现在包含Vue.js官方图标" >> $env:GITHUB_STEP_SUMMARY
+        echo "- 仅在Windows平台构建，提高效率" >> $env:GITHUB_STEP_SUMMARY

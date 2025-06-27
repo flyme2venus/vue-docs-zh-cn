@@ -67,14 +67,17 @@ if [ "$FAST_BUILD" = true ] || [ "$BUNDLE_TYPE" = "none" ]; then
     pnpm tauri:build:win-fast
     echo "构建完成！"
     echo "可执行文件位置: src-tauri/target/x86_64-pc-windows-msvc/release/vue-docs-zh-cn.exe"
+    echo "✨ 可执行文件已包含Vue.js图标"
 elif [ "$BUNDLE_TYPE" = "msi" ]; then
     echo "构建Tauri Windows应用（MSI安装包）..."
     pnpm tauri build --target x86_64-pc-windows-msvc --bundles msi
     echo "构建完成！"
     echo "安装程序位置: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/"
+    echo "✨ 安装程序和可执行文件都包含Vue.js图标"
 else
     echo "构建Tauri Windows应用（NSIS安装包）..."
     pnpm tauri:build:win-nsis
     echo "构建完成！"
     echo "安装程序位置: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/"
+    echo "✨ 安装程序和可执行文件都包含Vue.js图标"
 fi

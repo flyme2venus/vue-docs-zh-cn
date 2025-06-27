@@ -109,8 +109,10 @@ jobs:
           - 最小 4GB 内存推荐
           
           ### 文件说明
-          - `Vue Docs_x.x.x_x64_en-US.exe` - Windows 安装程序（推荐）
+          - `Vue Docs_x.x.x_x64-setup.exe` - Windows 安装程序（推荐）
           - `vue-docs-zh-cn.exe` - 便携版可执行文件
+          
+          **注意**: 两个文件都包含Vue.js官方图标！
           
           如有问题，请在 GitHub Issues 中反馈。
         releaseDraft: false

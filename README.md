@@ -52,9 +52,8 @@ corepack enable
 
 # Vue.js 中文文档
 
-[![Development Build](https://github.com/vuejs-translations/docs-zh-cn/actions/workflows/dev-build.yml/badge.svg)](https://github.com/vuejs-translations/docs-zh-cn/actions/workflows/dev-build.yml)
+[![Windows Build](https://github.com/vuejs-translations/docs-zh-cn/actions/workflows/quick-build.yml/badge.svg)](https://github.com/vuejs-translations/docs-zh-cn/actions/workflows/quick-build.yml)
 [![Windows Release](https://github.com/vuejs-translations/docs-zh-cn/actions/workflows/windows-release.yml/badge.svg)](https://github.com/vuejs-translations/docs-zh-cn/actions/workflows/windows-release.yml)
-[![Multi-platform Build](https://github.com/vuejs-translations/docs-zh-cn/actions/workflows/build-multiplatform.yml/badge.svg)](https://github.com/vuejs-translations/docs-zh-cn/actions/workflows/build-multiplatform.yml)
 
 ## 🖥️ 桌面应用
 

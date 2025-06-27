@@ -1,11 +1,7 @@
-name: Build Multi-platform Desktop App
+name: Multi-platform Build (Disabled)
 
+# 已禁用此工作流，使用 quick-build.yml 替代
 on:
-  push:
-    branches: [ main, master ]
-    tags: [ 'v*' ]
-  pull_request:
-    branches: [ main, master ]
   workflow_dispatch:
 
 env:
