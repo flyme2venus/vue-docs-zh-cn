@@ -1,7 +1,24 @@
-name: Windows Build (Disabled)
+name: Windows Build
 
-# 已禁用此工作流，使用 quick-build.yml 替代  
 on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'src/**'
+      - '.vitepress/**'
+      - 'src-tauri/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/build-windows.yml'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'src/**'
+      - '.vitepress/**'
+      - 'src-tauri/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/build-windows.yml'
   workflow_dispatch:
 
 jobs:
@@ -15,13 +32,13 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: '22'
         cache: 'npm'
 
     - name: Setup pnpm
       uses: pnpm/action-setup@v2
       with:
-        version: 9
+        version: 10
 
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
