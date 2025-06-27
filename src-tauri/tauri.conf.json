@@ -32,7 +32,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis", "app"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -52,16 +52,6 @@
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",
       "timestampUrl": "",
-      "wix": {
-        "language": "zh-CN",
-        "template": "main.wxs",
-        "fragmentPaths": [],
-        "componentGroupRefs": [],
-        "componentRefs": [],
-        "featureGroupRefs": [],
-        "featureRefs": [],
-        "mergeRefs": []
-      },
       "nsis": {
         "displayLanguageSelector": true,
         "languages": ["SimpChinese", "English"],

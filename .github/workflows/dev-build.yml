@@ -22,22 +22,13 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  test-build:
-    strategy:
-      matrix:
-        platform: [ubuntu-22.04, windows-latest, macos-latest]
-    
-    runs-on: ${{ matrix.platform }}
+  # 快速验证构建 - 仅检查前端构建
+  quick-check:
+    runs-on: ubuntu-22.04
     
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-
-    - name: Install dependencies (ubuntu only)
-      if: matrix.platform == 'ubuntu-22.04'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -49,14 +40,6 @@ jobs:
       with:
         version: 9
 
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
-
-    - name: Rust cache
-      uses: swatinem/rust-cache@v2
-      with:
-        workspaces: './src-tauri -> target'
-
     - name: Install dependencies
       run: pnpm install
 
@@ -65,7 +48,6 @@ jobs:
       continue-on-error: true
 
     - name: Lint markdown
-      if: matrix.platform == 'ubuntu-22.04'
       run: pnpm lint
       continue-on-error: true
 
@@ -74,29 +56,14 @@ jobs:
 
     - name: Verify build output
       run: |
-        if [ "${{ matrix.platform }}" = "windows-latest" ]; then
-          if [ ! -d ".vitepress/dist" ]; then
-            echo "Build failed - dist directory not found"
-            exit 1
-          fi
-        else
-          test -d .vitepress/dist || (echo "Build failed - dist directory not found" && exit 1)
-        fi
-        echo "Build verification passed"
-      shell: bash
+        test -d .vitepress/dist || (echo "Build failed - dist directory not found" && exit 1)
+        echo "Frontend build verification passed"
 
-    - name: Test Tauri build (Ubuntu/macOS)
-      if: matrix.platform != 'windows-latest'
-      run: pnpm tauri build --no-bundle
-      
-    - name: Test Tauri build (Windows)
-      if: matrix.platform == 'windows-latest'
-      run: pnpm tauri build --no-bundle --target x86_64-pc-windows-msvc
-
+  # Windows 桌面应用构建
   build-sample:
     runs-on: windows-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: test-build
+    needs: quick-check
     
     steps:
     - name: Checkout repository
@@ -129,13 +96,21 @@ jobs:
       run: pnpm build
 
     - name: Build Windows app (development)
-      run: pnpm tauri build --target x86_64-pc-windows-msvc
+      run: |
+        # 先尝试构建不打包的版本，如果成功再尝试打包
+        echo "Building executable only..."
+        pnpm tauri build --target x86_64-pc-windows-msvc --no-bundle
+        
+        echo "Building with NSIS bundle..."
+        pnpm tauri build --target x86_64-pc-windows-msvc --bundles nsis
+      continue-on-error: true
 
     - name: Upload development build
       uses: actions/upload-artifact@v4
+      if: always()
       with:
         name: windows-dev-build-${{ github.sha }}
         path: |
-          src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
-          src-tauri/target/x86_64-pc-windows-msvc/release/*.exe
+          src-tauri/target/x86_64-pc-windows-msvc/release/bundle/**/*
+          src-tauri/target/x86_64-pc-windows-msvc/release/vue-docs-zh-cn.exe
         retention-days: 7

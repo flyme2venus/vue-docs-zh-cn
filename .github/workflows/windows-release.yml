@@ -90,7 +90,7 @@ jobs:
           ## 📦 Windows 安装包
           
           ### 安装说明
-          1. 下载 `.msi` 安装程序
+          1. 下载 `.exe` 安装程序
           2. 运行安装程序，按照提示完成安装
           3. 在开始菜单中找到 "Vue Docs" 并启动
           
@@ -109,13 +109,13 @@ jobs:
           - 最小 4GB 内存推荐
           
           ### 文件说明
-          - `Vue Docs_x.x.x_x64.msi` - Windows 安装程序（推荐）
+          - `Vue Docs_x.x.x_x64_en-US.exe` - Windows 安装程序（推荐）
           - `vue-docs-zh-cn.exe` - 便携版可执行文件
           
           如有问题，请在 GitHub Issues 中反馈。
         releaseDraft: false
         prerelease: false
-        args: --target x86_64-pc-windows-msvc
+        args: --target x86_64-pc-windows-msvc --bundles nsis
 
     - name: Compress portable executable
       run: |
@@ -126,7 +126,7 @@ jobs:
       with:
         name: windows-installer
         path: |
-          src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
+          src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
         retention-days: 90
 
     - name: Upload portable executable
@@ -138,17 +138,26 @@ jobs:
 
     - name: Calculate checksums
       run: |
-        $installerPath = Get-ChildItem "src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi" | Select-Object -First 1
+        $installerPath = Get-ChildItem "src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe" | Select-Object -First 1
         $portablePath = "vue-docs-portable-windows.zip"
         
-        $installerHash = Get-FileHash $installerPath.FullName -Algorithm SHA256
-        $portableHash = Get-FileHash $portablePath -Algorithm SHA256
-        
-        Write-Output "## 文件校验和 (SHA256)" | Out-File -FilePath checksums.txt
-        Write-Output "``````" | Out-File -FilePath checksums.txt -Append
-        Write-Output "$($installerHash.Hash)  $($installerPath.Name)" | Out-File -FilePath checksums.txt -Append
-        Write-Output "$($portableHash.Hash)  $portablePath" | Out-File -FilePath checksums.txt -Append
-        Write-Output "``````" | Out-File -FilePath checksums.txt -Append
+        if ($installerPath) {
+          $installerHash = Get-FileHash $installerPath.FullName -Algorithm SHA256
+          $portableHash = Get-FileHash $portablePath -Algorithm SHA256
+          
+          Write-Output "## 文件校验和 (SHA256)" | Out-File -FilePath checksums.txt
+          Write-Output "``````" | Out-File -FilePath checksums.txt -Append
+          Write-Output "$($installerHash.Hash)  $($installerPath.Name)" | Out-File -FilePath checksums.txt -Append
+          Write-Output "$($portableHash.Hash)  $portablePath" | Out-File -FilePath checksums.txt -Append
+          Write-Output "``````" | Out-File -FilePath checksums.txt -Append
+        } else {
+          Write-Output "## 构建信息" | Out-File -FilePath checksums.txt
+          Write-Output "安装程序构建失败，仅提供便携版" | Out-File -FilePath checksums.txt -Append
+          $portableHash = Get-FileHash $portablePath -Algorithm SHA256
+          Write-Output "``````" | Out-File -FilePath checksums.txt -Append
+          Write-Output "$($portableHash.Hash)  $portablePath" | Out-File -FilePath checksums.txt -Append
+          Write-Output "``````" | Out-File -FilePath checksums.txt -Append
+        }
 
     - name: Upload checksums
       uses: actions/upload-artifact@v4

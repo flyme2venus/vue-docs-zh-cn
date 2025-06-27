@@ -1,0 +1,144 @@
+name: Quick Windows Build
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'src/**'
+      - '.vitepress/**'
+      - 'src-tauri/**'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  quick-build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 9
+
+    - name: Get pnpm store directory
+      id: pnpm-cache
+      shell: bash
+      run: |
+        echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+    - name: Setup pnpm cache
+      uses: actions/cache@v3
+      with:
+        path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-store-
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+        targets: x86_64-pc-windows-msvc
+
+    - name: Rust cache
+      uses: swatinem/rust-cache@v2
+      with:
+        workspaces: './src-tauri -> target'
+
+    - name: Install frontend dependencies
+      run: pnpm install --frozen-lockfile
+
+    - name: Build frontend
+      run: pnpm build
+
+    - name: Verify frontend build
+      run: |
+        if (!(Test-Path ".vitepress/dist")) {
+          Write-Error "Frontend build failed - dist directory not found"
+          exit 1
+        }
+        $files = Get-ChildItem ".vitepress/dist" -Recurse | Measure-Object
+        Write-Host "Frontend build successful - $($files.Count) files generated"
+
+    - name: Build Tauri executable (no bundle)
+      run: |
+        echo "Building Windows executable..."
+        pnpm tauri build --target x86_64-pc-windows-msvc --no-bundle
+        
+        if (Test-Path "src-tauri/target/x86_64-pc-windows-msvc/release/vue-docs-zh-cn.exe") {
+          Write-Host "✓ Executable build successful"
+          $size = (Get-Item "src-tauri/target/x86_64-pc-windows-msvc/release/vue-docs-zh-cn.exe").Length
+          Write-Host "Executable size: $([math]::Round($size/1MB, 2)) MB"
+        } else {
+          Write-Error "Executable build failed"
+          exit 1
+        }
+
+    - name: Create portable package
+      run: |
+        $sourceExe = "src-tauri/target/x86_64-pc-windows-msvc/release/vue-docs-zh-cn.exe"
+        $portableDir = "vue-docs-portable"
+        
+        # 创建便携版目录
+        New-Item -ItemType Directory -Path $portableDir -Force
+        Copy-Item $sourceExe "$portableDir/Vue文档.exe"
+        
+        # 创建说明文件
+        @"
+Vue.js 中文文档桌面应用 - 便携版
+
+使用说明：
+1. 双击 "Vue文档.exe" 启动应用
+2. 首次启动可能需要几秒钟加载
+3. 支持离线访问完整的Vue.js中文文档
+
+版本信息：
+- 构建时间: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+- 构建版本: ${{ github.sha }}
+- 系统要求: Windows 10 1903+ (64位)
+
+项目地址: https://github.com/vuejs-translations/docs-zh-cn
+"@ | Out-File -FilePath "$portableDir/README.txt" -Encoding UTF8
+        
+        # 压缩便携版
+        Compress-Archive -Path "$portableDir/*" -DestinationPath "vue-docs-portable-${{ github.sha }}.zip"
+        
+        Write-Host "✓ Portable package created"
+
+    - name: Upload executable
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-executable-${{ github.sha }}
+        path: |
+          src-tauri/target/x86_64-pc-windows-msvc/release/vue-docs-zh-cn.exe
+        retention-days: 30
+
+    - name: Upload portable package
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-portable-${{ github.sha }}
+        path: vue-docs-portable-${{ github.sha }}.zip
+        retention-days: 30
+
+    - name: Build summary
+      run: |
+        echo "## 🎉 构建完成" >> $env:GITHUB_STEP_SUMMARY
+        echo "" >> $env:GITHUB_STEP_SUMMARY
+        echo "### 📦 构建产物" >> $env:GITHUB_STEP_SUMMARY
+        echo "- **可执行文件**: vue-docs-zh-cn.exe" >> $env:GITHUB_STEP_SUMMARY
+        echo "- **便携版**: vue-docs-portable-${{ github.sha }}.zip" >> $env:GITHUB_STEP_SUMMARY
+        echo "" >> $env:GITHUB_STEP_SUMMARY
+        echo "### 📥 下载方式" >> $env:GITHUB_STEP_SUMMARY
+        echo "在 Actions 页面的 Artifacts 部分下载构建文件" >> $env:GITHUB_STEP_SUMMARY
